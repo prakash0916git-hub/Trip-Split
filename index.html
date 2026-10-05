@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tripsplit — Group Trip Settle-Up</title>
+<meta name="description" content="Track shared trip expenses, split costs fairly, and settle up with your group.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="9" stroke="white" stroke-width="1.8"/>
+          <path d="M12 7L13.8 10.6L17.5 11.2L14.8 13.7L15.5 17.4L12 15.6L8.5 17.4L9.2 13.7L6.5 11.2L10.2 10.6L12 7Z" fill="white"/>
+        </svg>
+      </span>
+      <span class="brand-name">Tripsplit</span>
+    </div>
+
+    <div class="trip-name-wrap">
+      <label for="tripNameInput" class="sr-only">Trip name</label>
+      <input id="tripNameInput" class="trip-name-input" type="text" value="Goa Trip 2026" maxlength="40" aria-label="Trip name">
+    </div>
+
+    <div class="topbar-actions">
+      <label class="you-select-wrap">
+        <span class="you-select-label">You're</span>
+        <select id="currentUserSelect" aria-label="Which member is you"></select>
+      </label>
+
+      <select id="currencySelect" class="currency-select" aria-label="Trip currency">
+        <option value="INR">₹ INR</option>
+        <option value="USD">$ USD</option>
+        <option value="EUR">€ EUR</option>
+        <option value="GBP">£ GBP</option>
+        <option value="AUD">A$ AUD</option>
+        <option value="JPY">¥ JPY</option>
+      </select>
+
+      <button id="exportBtn" class="icon-btn" title="Export trip as JSON" aria-label="Export trip as JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button id="importBtn" class="icon-btn" title="Import trip JSON" aria-label="Import trip JSON">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 15V3m0 0l-4 4m4-4l4 4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <input type="file" id="importFileInput" accept="application/json,.json" hidden>
+      <button id="resetBtn" class="icon-btn danger" title="Reset trip" aria-label="Reset trip">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m2 0l-.7 12.1A2 2 0 0114.3 21H9.7a2 2 0 01-2-1.9L7 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================== STATS ===================== -->
+  <section class="stats-row" id="statsRow" aria-live="polite"></section>
+
+  <!-- ===================== MAIN GRID ===================== -->
+  <main class="main-grid">
+
+    <section class="expenses-panel">
+      <div class="panel-header">
+        <h2>Expenses</h2>
+        <div class="panel-controls">
+          <div class="search-wrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" class="search-icon"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <input type="search" id="searchInput" placeholder="Search expenses…" aria-label="Search expenses">
+          </div>
+          <div class="category-chips" id="categoryChips" role="group" aria-label="Filter by category"></div>
+        </div>
+      </div>
+
+      <div id="expenseListContainer" class="expense-list"></div>
+    </section>
+
+    <aside class="sidebar">
+
+      <div class="card balances-card">
+        <h3>Balances</h3>
+        <div id="balancesList" class="balances-list"></div>
+        <button id="settleUpBtn" class="btn btn-primary full-width">Settle up</button>
+      </div>
+
+      <div class="card rates-card">
+        <div class="card-header-row">
+          <h3>Exchange rate</h3>
+          <button id="refreshRateBtn" class="icon-btn small" title="Refresh rate" aria-label="Refresh exchange rate">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M4 4v5h5M20 20v-5h-5M4.6 9a8 8 0 0113.8-3M19.4 15a8 8 0 01-13.8 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div id="ratesContent" class="rates-content"></div>
+        <label class="field-inline">
+          Convert to
+          <select id="secondaryCurrencySelect" aria-label="Convert to currency">
+            <option value="USD">USD</option>
+            <option value="INR">INR</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="AUD">AUD</option>
+            <option value="JPY">JPY</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="card members-card">
+        <div class="card-header-row">
+          <h3>Members</h3>
+          <button id="openMembersDrawerBtn" class="link-btn">Manage</button>
+        </div>
+        <div id="membersAvatarsList" class="avatars-row"></div>
+      </div>
+
+      <div class="card backup-card">
+        <h3>Cloud backup</h3>
+        <p class="muted-text">Sends a demo backup via a public test API — nothing is permanently stored server-side.</p>
+        <button id="backupBtn" class="btn btn-secondary full-width">Back up trip</button>
+        <div id="backupStatus" class="backup-status"></div>
+      </div>
+
+    </aside>
+  </main>
+
+  <button id="fabAddExpense" class="fab" title="Add expense" aria-label="Add expense">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<!-- ===================== MODAL: ADD/EDIT EXPENSE ===================== -->
+<div class="modal-overlay" id="expenseModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
+    <div class="modal-header">
+      <h3 id="expenseModalTitle">Add expense</h3>
+      <button class="icon-btn modal-close" data-close-modal="expenseModalOverlay" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <form id="expenseForm" class="modal-body" novalidate>
+      <input type="hidden" id="expenseId">
+
+      <div class="field">
+        <label for="expenseTitle">What was it for?</label>
+        <input id="expenseTitle" name="title" type="text" placeholder="e.g. Dinner at the beach shack" maxlength="60">
+        <span class="field-error" id="err-expenseTitle"></span>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label for="expenseAmount">Amount</label>
+          <input id="expenseAmount" name="amount" type="number" min="0" step="0.01" placeholder="0.00" inputmode="decimal">
+          <span class="field-error" id="err-expenseAmount"></span>
+        </div>
+        <div class="field">
+          <label for="expenseCategory">Category</label>
+          <select id="expenseCategory" name="category">
+            <option value="Food">Food</option>
+            <option value="Transport">Transport</option>
+            <option value="Stay">Stay</option>
+            <option value="Activities">Activities</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="expenseDate">Date</label>
+          <input id="expenseDate" type="date">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="expensePaidBy">Paid by</label>
+        <select id="expensePaidBy"></select>
+        <span class="field-error" id="err-expensePaidBy"></span>
+      </div>
+
+      <div class="field">
+        <label>Split between</label>
+        <div id="participantsCheckboxes" class="checkbox-grid"></div>
+        <span class="field-error" id="err-participants"></span>
+      </div>
+
+      <div class="field">
+        <label for="expenseNote">Note <span class="optional-tag">optional</span></label>
+        <textarea id="expenseNote" rows="2" maxlength="140" placeholder="Anything worth remembering about this expense"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Receipt <span class="optional-tag">optional</span></label>
+        <div class="file-drop" id="fileDropZone">
+          <input type="file" id="receiptInput" accept="image/*" hidden>
+          <div id="fileDropContent" class="file-drop-content">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 15V4m0 0L8 8m4-4l4 4M5 15v3a2 2 0 002 2h10a2 2 0 002-2v-3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Drag a photo here or <button type="button" id="browseFileBtn" class="link-btn">browse</button></span>
+            <span class="muted-text small">JPG or PNG, up to 5MB</span>
+          </div>
+          <div id="receiptPreviewWrap" class="receipt-preview-wrap" hidden>
+            <img id="receiptPreviewImg" alt="Receipt preview">
+            <button type="button" id="removeReceiptBtn" class="icon-btn small" aria-label="Remove receipt">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+        </div>
+        <span class="field-error" id="err-receipt"></span>
+      </div>
+    </form>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" data-close-modal="expenseModalOverlay">Cancel</button>
+      <button type="submit" form="expenseForm" class="btn btn-primary" id="saveExpenseBtn">Save expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: SETTLE UP ===================== -->
+<div class="modal-overlay" id="settleModalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settleModalTitle">
+    <div class="modal-header">
+      <h3 id="settleModalTitle">Settle up</h3>
+      <button class="icon-btn modal-close" data-close-modal="settleModalOverlay" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="muted-text">The fewest payments needed to settle every balance.</p>
+      <div id="settleTransactionsList" class="settle-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" data-close-modal="settleModalOverlay">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: RECEIPT LIGHTBOX ===================== -->
+<div class="modal-overlay" id="lightboxOverlay">
+  <div class="lightbox-content">
+    <button class="icon-btn lightbox-close" data-close-modal="lightboxOverlay" aria-label="Close">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <img id="lightboxImg" alt="Receipt full view">
+  </div>
+</div>
+
+<!-- ===================== MODAL: GENERIC CONFIRM ===================== -->
+<div class="modal-overlay" id="confirmModalOverlay">
+  <div class="modal modal-small" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal-body">
+      <h3 id="confirmTitle">Are you sure?</h3>
+      <p id="confirmMessage" class="muted-text"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== DRAWER: MEMBERS ===================== -->
+<div class="drawer-overlay" id="membersDrawerOverlay">
+  <aside class="drawer" role="dialog" aria-modal="true" aria-label="Manage members">
+    <div class="drawer-header">
+      <h3>Members</h3>
+      <button class="icon-btn" data-close-drawer="membersDrawerOverlay" aria-label="Close">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <form id="addMemberForm" class="drawer-add-form">
+      <input id="newMemberName" type="text" placeholder="Add a member by name" maxlength="30">
+      <button type="submit" class="btn btn-primary">Add</button>
+    </form>
+    <span class="field-error" id="err-newMemberName"></span>
+
+    <ul id="membersList" class="members-list"></ul>
+  </aside>
+</div>
+
+<!-- ===================== TOASTS ===================== -->
+<div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script src="storage.js"></script>
+<script src="toast.js"></script>
+<script src="modal.js"></script>
+<script src="validation.js"></script>
+<script src="currency.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
